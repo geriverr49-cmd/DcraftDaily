@@ -4,9 +4,9 @@ main: com.example.daily.DcraftDaily
 api-version: 1.21
 author: Sen
 description: Premium Gunluk Odul Sistemi
-softdepend: [Vault, PlayerPoints]
+softdepend: [Vault]
 
 commands:
-  odul:
+  gunlukodul:
     description: Gunluk odul menusunu acar
-    aliases: [daily, gunlukodul, ödül]
+    aliases: [odul, daily, günlüködül]
