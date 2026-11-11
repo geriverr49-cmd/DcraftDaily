@@ -15,7 +15,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -27,12 +26,10 @@ import java.util.concurrent.TimeUnit;
 public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener {
 
     private Economy econ = null;
-    private Object ppAPI = null;
     private File dataFile;
     private YamlConfiguration dataYml;
 
-    // 24 Saat (Milisaniye cinsinden)
-    private final long BEKLEME_SURESI = 24 * 60 * 60 * 1000L;
+    private final long BEKLEME_SURESI = 24 * 60 * 60 * 1000L; // 24 Saat
 
     @Override
     public void onEnable() {
@@ -43,16 +40,9 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
         }
         dataYml = YamlConfiguration.loadConfiguration(dataFile);
 
-        // Vault Bağlantısı
         if (getServer().getPluginManager().getPlugin("Vault") != null) {
             RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
             if (rsp != null) econ = rsp.getProvider();
-        }
-
-        // PlayerPoints Bağlantısı (Reflection)
-        Plugin ppPlugin = getServer().getPluginManager().getPlugin("PlayerPoints");
-        if (ppPlugin != null && ppPlugin.isEnabled()) {
-            try { ppAPI = ppPlugin.getClass().getMethod("getAPI").invoke(ppPlugin); } catch (Exception ignored) {}
         }
 
         if (getCommand("odul") != null) getCommand("odul").setExecutor(this);
@@ -79,20 +69,17 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
         ItemMeta cm = cam.getItemMeta(); if (cm != null) { cm.setDisplayName(" "); cam.setItemMeta(cm); }
         for (int i = 0; i < 45; i++) inv.setItem(i, cam);
 
-        // Oyuncu Verileri
         long sonAlim = dataYml.getLong(p.getUniqueId() + ".sonAlim", 0);
         int seri = dataYml.getInt(p.getUniqueId() + ".seri", 0);
 
         long gecenSure = System.currentTimeMillis() - sonAlim;
         boolean alabilir = gecenSure >= BEKLEME_SURESI;
 
-        // Eğer 2 günden fazla girmemişse seriyi sıfırla
         if (gecenSure >= (BEKLEME_SURESI * 2) && sonAlim != 0) {
             seri = 0;
             dataYml.set(p.getUniqueId() + ".seri", 0);
         }
 
-        // 7 Günlük Ödül Dizilimi
         for (int gun = 1; gun <= 7; gun++) {
             ItemStack item = new ItemStack(Material.CHEST);
             ItemMeta meta = item.getItemMeta();
@@ -103,13 +90,14 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
                 List<String> lore = new ArrayList<>();
                 lore.add("§8§m-----------------------");
                 
-                // Ödülleri belirle (Burayı istediğin gibi değiştirebilirsin)
-                int paraOdul = gun * 1000;
-                int puanOdul = gun * 10;
+                int paraOdul = gun * 2500; // Puan kalktığı için para ödülünü artırdık
                 lore.add("§7Ödüller:");
                 lore.add(" §a• " + paraOdul + " Para");
-                lore.add(" §b• " + puanOdul + " Dcraft Puanı");
-                if (gun == 7) lore.add(" §d• 1x Özel Kasa Anahtarı");
+                
+                if (gun == 7) {
+                    lore.add(" §b• 16x Elmas");
+                    lore.add(" §d• 1x Kasa Anahtarı");
+                }
                 
                 lore.add("§8§m-----------------------");
 
@@ -141,7 +129,6 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
             inv.setItem(10 + (gun - 1), item);
         }
 
-        // Alt Kısım Bilgi
         ItemStack info = new ItemStack(Material.PAPER);
         ItemMeta iMeta = info.getItemMeta();
         if (iMeta != null) {
@@ -161,7 +148,6 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
         }
         inv.setItem(40, info);
 
-        // Kapat
         ItemStack kapat = new ItemStack(Material.BARRIER);
         ItemMeta kMeta = kapat.getItemMeta();
         if (kMeta != null) { kMeta.setDisplayName("§c§lKapat"); kapat.setItemMeta(kMeta); }
@@ -185,7 +171,6 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
             return;
         }
 
-        // Ödül Alma Butonu (Sandık)
         if (clicked.getType() == Material.CHEST && clicked.getItemMeta().getDisplayName().contains("TIKLA VE AL")) {
             odulVer(p);
         }
@@ -201,42 +186,31 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
             return;
         }
 
-        // 2 günden fazla girmişse seriyi 0'la
         if (gecenSure >= (BEKLEME_SURESI * 2) && sonAlim != 0) {
             seri = 0;
         }
 
-        seri++; // Seriyi artır
-        if (seri > 7) seri = 1; // 7'den sonra başa döner
+        seri++; 
+        if (seri > 7) seri = 1; 
 
-        // Ödülleri Hesapla
-        int paraOdul = seri * 1000;
-        int puanOdul = seri * 10;
+        int paraOdul = seri * 2500;
 
-        // Para Ver
         if (econ != null) {
             econ.depositPlayer(p, paraOdul);
         }
 
-        // Puan Ver
-        if (ppAPI != null) {
-            try {
-                ppAPI.getClass().getMethod("give", UUID.class, int.class).invoke(ppAPI, p.getUniqueId(), puanOdul);
-            } catch (Exception ignored) {}
-        }
-
-        // 7. Gün Özel Ödül
+        // 7. Gün Özel Ödül (Puan yerine eşya)
         if (seri == 7) {
             p.getInventory().addItem(new ItemStack(Material.DIAMOND, 16));
             p.sendMessage("§d§lBONUS: §d16 Elmas kazandın!");
+            // Kasa anahtarı vermek istersen buraya kasa eklentisinin komutunu ekleyebilirsin.
+            // Örn: Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "crate key give " + p.getName() + " 1");
         }
 
-        // Kaydet
         dataYml.set(p.getUniqueId() + ".sonAlim", System.currentTimeMillis());
         dataYml.set(p.getUniqueId() + ".seri", seri);
         try { dataYml.save(dataFile); } catch (IOException ignored) {}
 
-        // Efektler
         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
         p.sendTitle("§a§lÖDÜL ALINDI!", "§7" + seri + ". Gün Ödülü", 10, 50, 10);
         
@@ -245,8 +219,8 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
         }
 
         p.sendMessage("§a§l✔ §a" + seri + ". Gün ödülünü aldın!");
-        p.sendMessage("§7Kazanılan: §e" + paraOdul + " Para §7ve §b" + puanOdul + " Puan");
+        p.sendMessage("§7Kazanılan: §e" + paraOdul + " Para");
         
         p.closeInventory();
     }
-                                    }
+}
