@@ -81,7 +81,7 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
         }
 
         for (int gun = 1; gun <= 7; gun++) {
-            ItemStack item = new ItemStack(Material.CHEST);
+            ItemStack item = new ItemStack(Material.TRIPWIRE_HOOK); // Kasa anahtarı görünümü için TRIPWIRE_HOOK (İp Kancası) kullandık
             ItemMeta meta = item.getItemMeta();
             
             if (meta != null) {
@@ -90,13 +90,15 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
                 List<String> lore = new ArrayList<>();
                 lore.add("§8§m-----------------------");
                 
-                int paraOdul = gun * 2500; // Puan kalktığı için para ödülünü artırdık
+                int paraOdul = gun * 2500;
                 lore.add("§7Ödüller:");
                 lore.add(" §a• " + paraOdul + " Para");
                 
+                // 7. GÜN ÖDÜLÜ (Sadece Kasa Anahtarı)
                 if (gun == 7) {
-                    lore.add(" §b• 16x Elmas");
-                    lore.add(" §d• 1x Kasa Anahtarı");
+                    lore.add(" §d• 3x Efsanevi Kasa Anahtarı");
+                } else {
+                    lore.add(" §d• 1x Efsanevi Kasa Anahtarı");
                 }
                 
                 lore.add("§8§m-----------------------");
@@ -111,7 +113,7 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
                         lore.add("§aÖdülünü almak için tıkla!");
                         meta.addEnchant(Enchantment.UNBREAKING, 1, true);
                         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-                        item = new ItemStack(Material.CHEST);
+                        item = new ItemStack(Material.TRIPWIRE_HOOK);
                     } else {
                         meta.setDisplayName("§e§l" + gun + ". GÜN (Kilitli)");
                         lore.add("§cÖdülünü almak için beklemen gerekiyor.");
@@ -171,7 +173,7 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
             return;
         }
 
-        if (clicked.getType() == Material.CHEST && clicked.getItemMeta().getDisplayName().contains("TIKLA VE AL")) {
+        if (clicked.getType() == Material.TRIPWIRE_HOOK && clicked.getItemMeta().getDisplayName().contains("TIKLA VE AL")) {
             odulVer(p);
         }
     }
@@ -199,12 +201,12 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
             econ.depositPlayer(p, paraOdul);
         }
 
-        // 7. Gün Özel Ödül (Puan yerine eşya)
+        // KASA ANAHTARI VERME KOMUTU
+        int kasaAdet = (seri == 7) ? 3 : 1; // 7. gün 3 tane, diğer günler 1 tane
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "crate key give " + p.getName() + " Efsanevi " + kasaAdet);
+        
         if (seri == 7) {
-            p.getInventory().addItem(new ItemStack(Material.DIAMOND, 16));
-            p.sendMessage("§d§lBONUS: §d16 Elmas kazandın!");
-            // Kasa anahtarı vermek istersen buraya kasa eklentisinin komutunu ekleyebilirsin.
-            // Örn: Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "crate key give " + p.getName() + " 1");
+            p.sendMessage("§d§lBONUS: §d3 Adet Kasa Anahtarı kazandın!");
         }
 
         dataYml.set(p.getUniqueId() + ".sonAlim", System.currentTimeMillis());
@@ -219,7 +221,7 @@ public class DcraftDaily extends JavaPlugin implements CommandExecutor, Listener
         }
 
         p.sendMessage("§a§l✔ §a" + seri + ". Gün ödülünü aldın!");
-        p.sendMessage("§7Kazanılan: §e" + paraOdul + " Para");
+        p.sendMessage("§7Kazanılan: §e" + paraOdul + " Para §7ve §d" + kasaAdet + "x Kasa Anahtarı");
         
         p.closeInventory();
     }
